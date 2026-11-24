@@ -29,7 +29,7 @@ final class WorkspaceXml {
             writeBoard(xml, state.inbox);
             xml.writeEndElement();
             for (Workspace space : state.workspaces) {
-                element(xml, "workspace", "id", space.id, "name", space.name);
+                element(xml, "workspace", "id", space.id, "name", space.name, "collapsed", space.collapsed);
                 for (Board board : space.boards) writeBoard(xml, board);
                 xml.writeEndElement();
             }
@@ -140,6 +140,7 @@ final class WorkspaceXml {
             for (Element element : children(root, "workspace")) {
                 Workspace space = new Workspace(element.getAttribute("name"));
                 space.id = value(element, "id", space.id);
+                space.collapsed = flag(element, "collapsed");
                 for (Element board : children(element, "board")) space.boards.add(readBoard(board));
                 state.workspaces.add(space);
             }

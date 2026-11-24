@@ -43,6 +43,15 @@ public final class DesktopTest {
         robot.setAutoDelay(22);
         robot.waitForIdle();
         screenshot(robot, captures, "board", app);
+        check(onEdt(() -> findButton(app.navigation, "Bug Tracker") != null), "workspace starts expanded");
+        click(app.navigation, "Indie Studio");
+        check(onEdt(() -> findButton(app.navigation, "Bug Tracker") == null
+            && findButton(app.navigation, "New board") == null), "collapse hides workspace actions and boards");
+        check(onEdt(() -> app.view.equals("Board") && app.board.name.equals("Project Nightfall")), "collapse keeps the active board open");
+        check(onEdt(() -> app.store.load().workspaces.getFirst().collapsed), "collapse preference is saved");
+        screenshot(robot, captures, "workspace-collapsed", app);
+        click(app.navigation, "Indie Studio");
+        check(onEdt(() -> findButton(app.navigation, "Bug Tracker") != null), "expand brings workspace boards back");
         for (String tab : new String[]{"Table", "Calendar", "Timeline", "Overview", "Board"}) {
             click(app, tab);
             check(onEdt(() -> app.view.equals(tab)), "open " + tab);

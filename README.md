@@ -9,7 +9,7 @@ Download the package for your system from [GitHub Releases](https://github.com/A
 | Platform | Package |
 | --- | --- |
 | Windows x64 | Run the MSI and open Quallo from Start. The ZIP contains a portable copy with `Quallo.exe`. |
-| Debian or Ubuntu x64 | Install the DEB with `sudo apt install ./quallo_1.0.1_amd64.deb`, then launch Quallo from the application menu. |
+| Debian or Ubuntu x64 | Install the DEB with `sudo apt install ./quallo_1.0.2_amd64.deb`, then launch Quallo from the application menu. |
 | RPM-based Linux x64 | Install the RPM with your distro’s package manager. |
 | Other Linux x64 distributions | Extract the Linux tarball and launch `Quallo/bin/Quallo` from the extracted folder. |
 

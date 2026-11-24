@@ -230,14 +230,7 @@ final class StudioWindow extends JFrame {
         sectionLabel(links, "WORKSPACES", () -> BoardsUi.newWorkspace(this));
         for (Workspace space : state.workspaces) {
             gap(links, 13);
-            JButton spaceName = button(space.name, "down", () -> BoardsUi.workspaceMenu(this, space)).ghost().left();
-            wide(links, spaceName, 31);
-            for (Board candidate : space.boards) {
-                if (candidate.template || candidate.archived) continue;
-                nav(links, candidate.name, "dot", section.equals("Project") && candidate == board,
-                    () -> chooseBoard(candidate), color(candidate.color));
-            }
-            nav(links, "New board", "plus", false, () -> BoardsUi.createBoard(this, space), MUTED);
+            workspaceGroup(links, space);
         }
         var favorites = new ArrayList<Board>();
         state.workspaces.forEach(space -> space.boards.stream().filter(b -> b.favorite && !b.archived && !b.template).forEach(favorites::add));
@@ -263,6 +256,42 @@ final class StudioWindow extends JFrame {
         settings.setToolTipText("Settings and backup");
         footer.add(settings, BorderLayout.EAST);
         navigation.add(footer, BorderLayout.SOUTH);
+    }
+
+    private void workspaceGroup(JPanel links, Workspace space) {
+        JPanel contents = stack();
+        pad(contents, 0, 5, 0, 0);
+        for (Board candidate : space.boards) {
+            if (candidate.template || candidate.archived) continue;
+            nav(contents, candidate.name, "dot", section.equals("Project") && candidate == board,
+                () -> chooseBoard(candidate), color(candidate.color));
+        }
+        nav(contents, "New board", "plus", false, () -> BoardsUi.createBoard(this, space), MUTED);
+
+        JPanel header = new JPanel(new BorderLayout(3, 0));
+        header.setOpaque(false);
+        Button toggle = new Button(space.name, null).ghost().left();
+        Runnable update = () -> {
+            contents.setVisible(!space.collapsed);
+            toggle.setIcon(new Glyph(space.collapsed ? "right" : "down", MUTED, 15));
+            toggle.setToolTipText((space.collapsed ? "Expand " : "Collapse ") + space.name);
+        };
+        toggle.addActionListener(event -> {
+            space.collapsed = !space.collapsed;
+            update.run();
+            links.revalidate();
+            links.repaint();
+            save();
+        });
+        update.run();
+        header.add(toggle, BorderLayout.CENTER);
+        Button settings = button("", "menu", () -> BoardsUi.workspaceMenu(this, space)).ghost();
+        String settingsLabel = "Workspace settings for " + space.name;
+        settings.setToolTipText(settingsLabel);
+        settings.getAccessibleContext().setAccessibleName(settingsLabel);
+        header.add(settings, BorderLayout.EAST);
+        wide(links, header, 31);
+        line(links, contents);
     }
 
     private static void sectionLabel(JPanel links, String title, Runnable add) {

@@ -49,6 +49,7 @@ final class Model {
     static final class Workspace {
         String id = id();
         String name;
+        boolean collapsed;
         final List<Board> boards = new ArrayList<>();
 
         Workspace(String name) {
