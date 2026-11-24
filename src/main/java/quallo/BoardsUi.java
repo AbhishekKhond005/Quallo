@@ -58,7 +58,7 @@ final class BoardsUi {
                 } else {
                     int count = board.activeCards().size();
                     actions.add(badge(count + (count == 1 ? " card" : " cards"), ACCENT));
-                    actions.add(button("Open", "arrow", () -> app.chooseBoard(board)));
+                    actions.add(GuidedTour.target(button("Open", "arrow", () -> app.chooseBoard(board)), "Open board " + board.id));
                 }
                 tile.add(actions, BorderLayout.EAST);
                 line(boards, tile);

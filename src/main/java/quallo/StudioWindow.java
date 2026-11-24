@@ -20,6 +20,7 @@ import static quallo.Theme.*;
 
 final class StudioWindow extends JFrame {
     final Store store;
+    final GuidedTour tour = new GuidedTour(this);
     State state;
     Board board;
     Workspace workspaceTable;
@@ -151,7 +152,10 @@ final class StudioWindow extends JFrame {
         int mask = key == KeyEvent.VK_F1 ? 0 : Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
         getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke(key, mask), name);
         getRootPane().getActionMap().put(name, new AbstractAction() {
-            @Override public void actionPerformed(ActionEvent event) { task.run(); }
+            @Override public void actionPerformed(ActionEvent event) {
+                if (!tour.isActive()) task.run();
+                else if (key == KeyEvent.VK_F1) tour.close();
+            }
         });
     }
 
@@ -222,10 +226,10 @@ final class StudioWindow extends JFrame {
         fixed.add(brand, BorderLayout.NORTH);
         JPanel sections = stack();
         pad(sections, 5, 14, 12, 14);
-        nav(sections, "Projects", "grid", section.equals("Projects") || board == null && section.equals("Project"),
-            () -> openSection("Projects"), ACCENT);
-        nav(sections, "Inbox", "archive", section.equals("Inbox"), () -> openSection("Inbox"), ORANGE);
-        nav(sections, "My work", "checks", section.equals("My work"), () -> openSection("My work"), GREEN);
+        GuidedTour.target(nav(sections, "Projects", "grid", section.equals("Projects") || board == null && section.equals("Project"),
+            () -> openSection("Projects"), ACCENT), "Projects");
+        GuidedTour.target(nav(sections, "Inbox", "archive", section.equals("Inbox"), () -> openSection("Inbox"), ORANGE), "Inbox");
+        GuidedTour.target(nav(sections, "My work", "checks", section.equals("My work"), () -> openSection("My work"), GREEN), "My work");
         nav(sections, "Tutorial", "book", section.equals("Tutorial"), () -> openSection("Tutorial"), ORANGE);
         fixed.add(sections, BorderLayout.CENTER);
         navigation.add(fixed, BorderLayout.NORTH);
@@ -259,7 +263,7 @@ final class StudioWindow extends JFrame {
         footer.add(profile, BorderLayout.CENTER);
         Button settings = button("", "settings", () -> BoardsUi.settings(this)).ghost();
         settings.setToolTipText("Settings and backup");
-        footer.add(settings, BorderLayout.EAST);
+        footer.add(GuidedTour.target(settings, "Settings and backup"), BorderLayout.EAST);
         navigation.add(footer, BorderLayout.SOUTH);
     }
 
@@ -312,13 +316,14 @@ final class StudioWindow extends JFrame {
         wide(links, row, 23);
     }
 
-    private static void nav(JPanel links, String title, String icon, boolean active, Runnable open, Color tint) {
+    private static Button nav(JPanel links, String title, String icon, boolean active, Runnable open, Color tint) {
         Button button = button(title, icon, open).ghost().left();
         if (active) button.style(ACCENT_BG, TEXT);
         button.setIcon(new Glyph(icon, tint, 16));
         button.setToolTipText(title);
         wide(links, button, 36);
         gap(links, 2);
+        return button;
     }
 
     private static void wide(JPanel parent, JComponent component, int height) {
@@ -349,8 +354,9 @@ final class StudioWindow extends JFrame {
         if (hasSearch()) actions.add(search);
         if (!section.equals("Inbox")) {
             boolean project = board != null && section.equals("Project");
-            actions.add(primary(project ? "New card" : "New board", "plus",
-                project ? this::addCard : () -> BoardsUi.createBoard(this, workspaceTable)));
+            String label = project ? "New card" : "New board";
+            actions.add(GuidedTour.target(primary(label, "plus",
+                project ? this::addCard : () -> BoardsUi.createBoard(this, workspaceTable)), label));
         }
         JPanel end = new JPanel(new GridBagLayout());
         end.setOpaque(false);
@@ -438,14 +444,14 @@ final class StudioWindow extends JFrame {
         for (String[] entry : views) {
             Button tab = button(entry[0], entry[1], () -> { view = entry[0]; currentScroll = null; render(); }).ghost();
             if (view.equals(entry[0])) tab.style(ACCENT_BG, ACCENT);
-            tabs.add(tab);
+            tabs.add(GuidedTour.target(tab, entry[0]));
         }
         toolbar.add(tabs, BorderLayout.WEST);
         JPanel controls = row(7);
         Button filter = new Button(filters.active() ? "Filters •" : "Filters", "filter");
         filter.addActionListener(event -> filters.edit(this));
-        controls.add(filter);
-        controls.add(button("List", "plus", () -> BoardsUi.editLane(this, null)));
+        controls.add(GuidedTour.target(filter, "Filters"));
+        controls.add(GuidedTour.target(button("List", "plus", () -> BoardsUi.editLane(this, null)), "List"));
         toolbar.add(controls, BorderLayout.EAST);
         pad(tabs, 0, -4, 9, -4);
         pad(controls, 0, -7, 9, -7);

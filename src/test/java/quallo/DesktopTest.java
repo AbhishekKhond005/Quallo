@@ -2,6 +2,7 @@ package quallo;
 
 import java.awt.*;
 import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.awt.image.BufferedImage;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -27,6 +28,8 @@ public final class DesktopTest {
     public static void main(String[] args) throws Exception {
         Path data = Files.createTempDirectory("quallo-desktop-test-");
         try (Store store = new Store(data.resolve("app"))) {
+            Path captures = args.length == 0 ? null : Path.of(args[0]);
+            guidedTour(data.resolve("tour"), captures);
             StudioWindow app = edt(() -> {
                 Theme.setup();
                 StudioWindow window = new StudioWindow(store, store.load());
@@ -34,7 +37,6 @@ public final class DesktopTest {
                 return window;
             });
             try {
-                Path captures = args.length == 0 ? null : Path.of(args[0]);
                 Robot robot = new Robot();
                 robot.setAutoDelay(18);
                 setup(app, captures);
@@ -56,6 +58,114 @@ public final class DesktopTest {
             }
         }
         System.out.println("Desktop workflow checks passed.");
+    }
+
+    private static void guidedTour(Path directory, Path captures) throws Exception {
+        try (Store store = new Store(directory)) {
+            StudioWindow app = edt(() -> {
+                Theme.setup();
+                StudioWindow window = new StudioWindow(store, store.load());
+                window.setVisible(true);
+                return window;
+            });
+            try {
+                Robot robot = new Robot();
+                robot.setAutoDelay(20);
+                click(app, "Open tutorial");
+                click(app, "Start guided tour");
+                tourStep(app, "Find your projects");
+                screenshot(captures, "guided-tour", app);
+                click((Container) app.getGlassPane(), "Skip step");
+                tourStep(app, "Open a project board");
+                click((Container) app.getGlassPane(), "Skip step");
+                tourStep(app, "Capture ideas in Inbox");
+                check(edt(() -> app.state.workspaces.isEmpty() && app.state.inbox.activeCards().isEmpty()),
+                    "skipping board setup leaves a fresh workspace empty");
+                tool((Container) app.getGlassPane(), "Close tour");
+                click(app.navigation, "Tutorial");
+                click(app, "Start guided tour");
+                tourStep(app, "Find your projects");
+                edt(() -> { app.setSize(1000, 685); return null; });
+                robot.waitForIdle();
+                spotlightClick(robot, app.navigation, "Inbox");
+                check(edt(() -> app.section.equals("Tutorial")), "blurred sidebar actions cannot be clicked");
+                spotlightClick(robot, app.navigation, "Projects");
+                tourStep(app, "Open a project board");
+                spotlightClick(robot, app.body, "New board");
+                click(dialog("New project board"), "Cancel");
+                tourStep(app, "Open a project board");
+                check(edt(() -> app.state.workspaces.isEmpty()), "cancelling the guided dialog leaves project data empty");
+
+                spotlightClick(robot, app.body, "New board");
+                JDialog board = dialog("New project board");
+                input(board, "Workspace name", "Tour studio");
+                input(board, "Board name", "Tour project");
+                click(board, "OK");
+                tourStep(app, "Set up a workflow");
+                spotlightClick(robot, app.body, "List");
+                configureList("Add list", "Playable build", "", false);
+                tourStep(app, "Capture a task");
+                spotlightClick(robot, app.body, "New card");
+                JDialog card = dialog("New card");
+                namedText(card, "Card title", "Playtest movement");
+                click(card, "Create card");
+                tourStep(app, "Find the work that matters");
+                click((Container) app.getGlassPane(), "Back");
+                tourStep(app, "Capture a task");
+                click((Container) app.getGlassPane(), "Skip step");
+                tourStep(app, "Find the work that matters");
+                spotlightClick(robot, app.body, "Filters");
+                click(dialog("Filter tasks"), "Cancel");
+                for (String view : new String[]{"Table", "Calendar", "Timeline", "Overview"}) {
+                    spotlightClick(robot, app.body, view);
+                    check(edt(() -> app.view.equals(view)), "guided navigation to " + view);
+                }
+
+                tourStep(app, "Capture ideas in Inbox");
+                spotlightClick(robot, app.navigation, "Inbox");
+                tourStep(app, "Find your assigned work");
+                spotlightClick(robot, app.navigation, "My work");
+                tourStep(app, "Keep a backup");
+                click((Container) app.getGlassPane(), "Open Settings");
+                click(dialog("Quallo settings"), "Close");
+                tourStep(app, "Tour complete");
+                click((Container) app.getGlassPane(), "Done");
+                check(edt(() -> !app.tour.isActive() && app.state.workspaces.size() == 1 && app.board.activeCards().size() == 1),
+                    "tour exits and persists only explicitly created items");
+
+                click(app.navigation, "Tutorial");
+                click(app, "Start guided tour");
+                spotlightClick(robot, app.navigation, "Projects");
+                tourStep(app, "Open your board");
+                robot.keyPress(KeyEvent.VK_ESCAPE);
+                robot.keyRelease(KeyEvent.VK_ESCAPE);
+                await("Escape closes the guided tour", () -> edt(() -> !app.tour.isActive()));
+                click(app.navigation, "Inbox");
+                check(edt(() -> app.section.equals("Inbox")), "underlying navigation works after the tour closes");
+            } finally {
+                edt(() -> { app.tour.close(); app.dispose(); return null; });
+            }
+        }
+        System.out.println("  Guided tour spotlight, navigation, modal cancellation, back, skip and close passed.");
+    }
+
+    private static void tourStep(StudioWindow app, String title) throws Exception {
+        await("tour step " + title, () -> edt(() -> app.tour.isActive()
+            && find((Container) app.getGlassPane(), JLabel.class, label -> title.equals(label.getText())) != null));
+    }
+
+    private static void spotlightClick(Robot robot, Container owner, String label) throws Exception {
+        Point center = edt(() -> {
+            AbstractButton button = findButton(owner, label);
+            check(button != null, "tour target " + label);
+            Point position = button.getLocationOnScreen();
+            position.translate(button.getWidth() / 2, button.getHeight() / 2);
+            return position;
+        });
+        robot.mouseMove(center.x, center.y);
+        robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+        robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+        robot.waitForIdle();
     }
 
     private static void setup(StudioWindow app, Path captures) throws Exception {

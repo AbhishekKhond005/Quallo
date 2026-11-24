@@ -32,12 +32,19 @@ final class Tutorial {
     static JComponent build(StudioWindow app) {
         JPanel root = stack();
         pad(root, 25, 28, 25, 28);
-        JPanel header = new Surface(new BorderLayout(20, 0), SURFACE, LINE, 19);
+        JPanel header = new Surface(new BorderLayout(20, 12), SURFACE, LINE, 19);
         pad(header, 17, 17, 17, 17);
-        header.add(Views.title("Tutorial", "Set up your own game project, from the first board to playtest and release."), BorderLayout.CENTER);
-        long complete = LESSONS.stream().filter(lesson -> app.state.completedLessons.contains(lesson.id())).count();
-        header.add(badge(complete + " / " + LESSONS.size() + " complete", GREEN), BorderLayout.EAST);
+        header.add(Views.title("Tutorial", "Follow the highlighted controls as you set up and explore your own project."), BorderLayout.CENTER);
+        JPanel start = row(0);
+        start.add(primary("Start guided tour", "arrow", app.tour::start));
+        header.add(start, BorderLayout.SOUTH);
         line(root, header);
+        gap(root, 17);
+        long complete = LESSONS.stream().filter(lesson -> app.state.completedLessons.contains(lesson.id())).count();
+        JPanel lessons = row(10);
+        lessons.add(text("Game development lessons", 18, true, TEXT));
+        lessons.add(badge(complete + " / " + LESSONS.size() + " complete", GREEN));
+        line(root, lessons);
         gap(root, 12);
         for (Lesson lesson : LESSONS) {
             boolean done = app.state.completedLessons.contains(lesson.id());
