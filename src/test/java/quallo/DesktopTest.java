@@ -43,6 +43,7 @@ public final class DesktopTest {
                 moveAndAutomate(app, robot);
                 organize(app);
                 exportAndRestore(app, data);
+                crossProject(app);
             } finally {
                 edt(() -> {
                     for (Window window : Window.getWindows()) window.dispose();
@@ -66,6 +67,9 @@ public final class DesktopTest {
         click(app, "Mark complete");
         check(edt(() -> app.store.load().completedLessons.contains("scope")), "tutorial progress is persisted");
         click(app, "Mark incomplete");
+        click(app, "Open Projects");
+        click(app.navigation, "Tutorial");
+        check(edt(() -> app.section.equals("Tutorial")), "Tutorial is available in the main sidebar");
         click(app, "Open Projects");
         click(app, "New board");
         JDialog dialog = dialog("New project board");
@@ -125,6 +129,10 @@ public final class DesktopTest {
         click(app, "New card");
         JDialog card = dialog("New card");
         namedText(card, "Card title", SECOND);
+        input(card, "Due (YYYY-MM-DD)", "invalid date");
+        click(card, "Create card");
+        click(dialog("Quallo"), "OK");
+        check(edt(() -> app.board.activeCards().size() == 1), "invalid date keeps draft out of the board");
         edt(() -> {
             require(card, JTextArea.class, area -> area.isEditable()).setText("Controller, build \"1\".\nRetest on Linux.");
             return null;
@@ -252,6 +260,7 @@ public final class DesktopTest {
         check(edt(() -> app.state.inbox.activeCards().isEmpty()
             && app.board.laneOf(card(app, "Investigate a stutter")).name.equals("Review")), "file Inbox card onto a board");
         click(app.navigation, PROJECT);
+        check(edt(() -> find(app.page, JLabel.class, item -> "1/1".equals(item.getText())) != null), "WIP count after move");
         System.out.println("  Drag-and-drop, local rules, Inbox capture and filing passed.");
     }
 
@@ -330,6 +339,64 @@ public final class DesktopTest {
         check(edt(() -> app.state.firstBoard().name.equals(PROJECT)
             && app.state.firstBoard().activeCards().stream().anyMatch(card -> card.title.equals(SECOND) && !card.attachments.isEmpty())), "restored workspace content");
         System.out.println("  CSV export and workspace backup/restore passed.");
+    }
+
+    private static void crossProject(StudioWindow app) throws Exception {
+        click(app, "Projects");
+        click(app, "Workspace");
+        input(dialog("New workspace"), "Workspace name", "Shipping");
+        click(dialog("New workspace"), "OK");
+        tool(app, "Workspace settings for Shipping");
+        click(dialog("Workspace settings"), "Rename");
+        input(dialog("Rename workspace"), "Name", "Ship room");
+        click(dialog("Rename workspace"), "OK");
+
+        click(app.navigation, "Release candidate");
+        menu(app, "Board settings", "Move board to workspace");
+        click(dialog("Move board"), "OK");
+        check(edt(() -> app.state.workspace(app.board).name.equals("Ship room")), "move board to renamed workspace");
+        menu(app, "Board settings", "Board details");
+        JDialog details = dialog("Board details");
+        input(details, "Name", "Release validation");
+        click(details, "OK");
+
+        click(app.navigation, PROJECT);
+        menuButton(edit(app, SECOND), "Actions", "Duplicate card");
+        check(edt(() -> !card(app, SECOND + " copy").attachments.isEmpty()), "duplicate card preserves files");
+        menuButton(edit(app, SECOND + " copy"), "Actions", "Move to another board");
+        JDialog move = dialog("Move card to a project board");
+        combo(move, "Board", "Ship room / Release validation");
+        combo(move, "List", "Review");
+        click(move, "OK");
+        check(edt(() -> app.board.activeCards().stream().noneMatch(card -> card.title.equals(SECOND + " copy"))), "cross-board move removes source");
+        click(app.navigation, "Release validation");
+        check(edt(() -> app.board.laneOf(card(app, SECOND + " copy")).name.equals("Review")), "cross-board move reaches selected list");
+
+        menuButton(edit(app, SECOND + " copy"), "Actions", "Archive card");
+        menu(app, "Board settings", "Archive and restore");
+        click(dialog("Board archive"), "Delete permanently");
+        click(dialog("Board archive"), "OK");
+        check(edt(() -> app.board.lanes.stream().flatMap(lane -> lane.cards.stream())
+            .noneMatch(card -> card.title.equals(SECOND + " copy"))), "delete an archived card permanently");
+
+        tool(app, "Settings and backup");
+        JDialog settings = dialog("Quallo settings");
+        input(settings, "Display name", "Morgan");
+        click(settings, "Save profile");
+        check(edt(() -> app.store.load().author.equals("Morgan") && app.board.people.contains("Morgan")
+            && card(app, SECOND).assignees.contains("Morgan")), "profile rename updates local assignments");
+
+        Lane lane = edt(() -> app.board.firstLane());
+        edt(() -> {
+            for (int i = 0; i < 45; i++) addCard(app.board, lane, "Pagination task " + i, app.state.author);
+            app.changed();
+            return null;
+        });
+        AbstractButton more = edt(() -> require(app.page, AbstractButton.class, button -> button.getText().startsWith("Show ")));
+        click(app.page, more.getText());
+        check(edt(() -> find(app.page, JComponent.class, item -> item.getAccessibleContext() != null
+            && "Pagination task 44".equals(item.getAccessibleContext().getAccessibleName())) != null), "show more cards on a large list");
+        System.out.println("  Multiple workspaces, board settings, duplicate/move/delete, profile and pagination passed.");
     }
 
     private static Card card(StudioWindow app, String title) {

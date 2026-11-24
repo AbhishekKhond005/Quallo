@@ -79,6 +79,30 @@ public final class StoreTest {
             search.status = "Blocked";
             check(search.matches(board, backlog, second, "0.1.22"), "search data and blocked status");
             check(!search.matches(board, backlog, first, ""), "hide unblocked task");
+            search.clear();
+            first.type = "Bug";
+            first.priority = "High";
+            first.milestone = "Closed beta";
+            first.due = LocalDate.now().plusDays(2);
+            first.watching = true;
+            first.labels.add("QA");
+            first.assignees.add("Me");
+            search.type = "Bug";
+            search.priority = "High";
+            search.milestone = "Closed beta";
+            search.label = "QA";
+            search.assignee = "Me";
+            for (String status : new String[]{"Open", "Due next 7 days", "Watching"}) {
+                search.status = status;
+                check(search.matches(board, backlog, first, "") && !search.matches(board, backlog, second, ""),
+                    "combined filters with " + status);
+            }
+            search.status = "Complete";
+            check(!search.matches(board, backlog, first, ""), "open card excluded from complete filter");
+            search.clear();
+            first.due = LocalDate.now().minusDays(1);
+            search.status = "Overdue";
+            check(search.matches(board, backlog, first, ""), "overdue filter");
             Board copy = copyBoard(board, "Backup template", state.author);
             Card copied = copy.activeCards().stream().filter(card -> card.title.equals(second.title)).findFirst().orElseThrow();
             check(copied.dependencies.size() == 1 && !copied.dependencies.contains(first.id), "copy rewires dependency");
@@ -107,6 +131,19 @@ public final class StoreTest {
             check(Files.readString(store.attachment(file)).equals("Notes for the QA team"), "backup restores copied file");
             check(store.load().firstBoard().card(cardId) != null, "backup remains on disk");
             check(restored.inbox.activeCards().getFirst().attachments.getFirst().equals(file), "backup includes Inbox");
+            Path incomplete = root.resolve("incomplete.zip");
+            try (var zip = new java.util.zip.ZipOutputStream(Files.newOutputStream(incomplete))) {
+                zip.putNextEntry(new java.util.zip.ZipEntry("workspace.xml"));
+                WorkspaceXml.write(restored, zip);
+                zip.closeEntry();
+            }
+            try {
+                store.restore(incomplete);
+                throw new AssertionError("Backup with a missing attachment should fail");
+            } catch (IOException expected) {
+                check(store.load().firstBoard().card(cardId) != null && Files.isRegularFile(store.attachment(file)),
+                    "failed restore preserves the existing workspace and attachments");
+            }
         }
     }
 

@@ -77,7 +77,9 @@ final class BoardsUi {
             empty.add(actions, BorderLayout.SOUTH);
             line(content, empty);
         }
-        return scroll(content);
+        JPanel page = panel(new BorderLayout(), BASE);
+        page.add(content, BorderLayout.NORTH);
+        return scroll(page);
     }
 
     static void newWorkspace(StudioWindow app) {
