@@ -107,10 +107,11 @@ final class BoardCanvas extends JPanel {
             pad(this, 10, 10, 9, 10);
             JPanel information = stack();
             JPanel tags = row(5);
-            card.labels.stream().limit(2).forEach(label -> tags.add(
-                badge(shortText(label, 18), color(board.labels.getOrDefault(label, COLORS.getFirst())))));
+            boolean elevated = card.priority.equals("High") || card.priority.equals("Urgent");
+            card.labels.stream().limit(elevated ? 1 : 2).forEach(label -> tags.add(
+                badge(shortText(label, elevated ? 18 : 12), color(board.labels.getOrDefault(label, COLORS.getFirst())))));
             if (card.labels.isEmpty()) tags.add(badge(card.type, QUIET));
-            if (card.priority.equals("High") || card.priority.equals("Urgent")) tags.add(badge(card.priority, ORANGE));
+            if (elevated) tags.add(badge(card.priority, ORANGE));
             line(information, tags);
             gap(information, 7);
             JLabel name = text("", 14, true, card.complete ? color("#DAD6E9") : TEXT);

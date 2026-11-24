@@ -61,6 +61,10 @@ final class CardEditor extends JDialog {
         JPanel heading = stack();
         line(heading, text(board.name + "  /  " + lane.name, 12, true, ACCENT));
         gap(heading, 8);
+        JLabel titleLabel = text("Card title", 12, true, MUTED);
+        titleLabel.setLabelFor(title);
+        line(heading, titleLabel);
+        gap(heading, 4);
         line(heading, title);
         wrapper.add(heading, BorderLayout.NORTH);
 
@@ -76,6 +80,7 @@ final class CardEditor extends JDialog {
         destination = choices(board.lanes.stream().filter(item -> !item.archived || item == lane).toList(),
             item -> item.name, lane);
 
+        styleTabs(tabs);
         tabs.addTab("Details", tab(details()));
         tabs.addTab("Checklists", tab(checklistBody));
         tabs.addTab("Dependencies", tab(dependencyBody));
@@ -367,6 +372,7 @@ final class CardEditor extends JDialog {
         }
         JComboBox<Choice<Board>> projects = choices(boards, value -> app.state.workspace(value).name + " / " + value.name, boards.getFirst());
         JComboBox<Choice<Lane>> lists = new JComboBox<>();
+        styleCombo(lists);
         Runnable fill = () -> {
             lists.removeAllItems();
             choice(projects).lanes.stream().filter(lane -> !lane.archived)

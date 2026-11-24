@@ -5,7 +5,10 @@ import java.awt.geom.*;
 import java.util.function.Consumer;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.plaf.basic.BasicArrowButton;
+import javax.swing.plaf.basic.BasicComboBoxUI;
 import javax.swing.plaf.basic.BasicScrollBarUI;
+import javax.swing.plaf.basic.BasicTabbedPaneUI;
 
 final class Theme {
     static final Color BASE = color("#101017"), SIDE = color("#15151F"), SURFACE = color("#181823");
@@ -128,6 +131,49 @@ final class Theme {
         area.setWrapStyleWord(true);
         pad(area, 9, 10, 9, 10);
         return area;
+    }
+
+    static void styleCombo(JComboBox<?> combo) {
+        combo.setBackground(CARD);
+        combo.setForeground(TEXT);
+        combo.setBorder(BorderFactory.createLineBorder(LINE));
+        combo.setUI(new BasicComboBoxUI() {
+            @Override protected JButton createArrowButton() {
+                JButton arrow = new BasicArrowButton(SwingConstants.SOUTH, CARD, CARD, MUTED, CARD);
+                arrow.setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 4));
+                return arrow;
+            }
+        });
+    }
+
+    static void styleTabs(JTabbedPane tabs) {
+        tabs.setBackground(BASE);
+        tabs.setUI(new BasicTabbedPaneUI() {
+            @Override protected void installDefaults() {
+                super.installDefaults();
+                tabInsets = new Insets(8, 13, 8, 13);
+                selectedTabPadInsets = new Insets(0, 0, 0, 0);
+                contentBorderInsets = new Insets(6, 1, 1, 1);
+            }
+
+            @Override protected void paintTabBackground(Graphics graphics, int placement, int index,
+                    int x, int y, int w, int h, boolean selected) {
+                Graphics2D g = smooth(graphics);
+                g.setColor(selected ? ACCENT_BG : SURFACE);
+                g.fillRoundRect(x, y + 2, w - 2, h - 2, 10, 10);
+                g.dispose();
+            }
+
+            @Override protected void paintTabBorder(Graphics graphics, int placement, int index,
+                    int x, int y, int w, int h, boolean selected) {}
+
+            @Override protected void paintContentBorder(Graphics graphics, int placement, int selected) {
+                graphics.setColor(LINE);
+                Insets bounds = tabPane.getInsets();
+                int y = bounds.top + calculateTabAreaHeight(placement, runCount, maxTabHeight) + 2;
+                graphics.drawLine(bounds.left, y, tabPane.getWidth() - bounds.right, y);
+            }
+        });
     }
 
     static JScrollPane scroll(Component view) {

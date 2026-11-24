@@ -67,6 +67,14 @@ jobs:
         run: |
           $version = if ($env:GITHUB_REF_TYPE -eq "tag") { $env:GITHUB_REF_NAME.Substring(1) } else { "1.0.0" }
           ./scripts/package-windows.ps1 -Version $version
+      - name: Test Windows workspace storage
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path build/tests | Out-Null
+          javac --release 21 -encoding UTF-8 -cp build/classes -d build/tests src/test/java/quallo/StoreTest.java
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          java -cp "build/classes;build/tests" quallo.StoreTest
+          exit $LASTEXITCODE
       - name: Install MSI and verify the native launcher
         shell: pwsh
         run: |

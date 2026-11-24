@@ -124,6 +124,7 @@ final class StudioWindow extends JFrame {
 
     void chooseBoard(Board selected) {
         board = selected;
+        workspaceTable = null;
         state.selectedBoard = selected.id;
         filters.clear();
         visibleLimits.clear();

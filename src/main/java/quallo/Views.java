@@ -149,7 +149,7 @@ final class Views {
         JPanel page = panel(new BorderLayout(0, 17), BASE);
         pad(page, 25, 28, 25, 28);
         JPanel heading = stack();
-        line(heading, title("My work", "Tasks assigned to " + app.state.author + " and cards you’re watching."));
+        line(heading, title("My work", "Your cards, watched work, and assigned checklist items."));
         gap(heading, 12);
         JPanel counts = row(8);
         counts.add(badge(overdue + " overdue", overdue > 0 ? DANGER : QUIET));
@@ -373,6 +373,30 @@ final class Views {
         grouped.forEach((key, list) -> progress(milestones, key, list.stream().filter(card -> card.complete).count(), list.size(), ACCENT));
         rows.add(milestones);
         line(root, rows);
+        gap(root, 15);
+        JPanel workloads = new JPanel(new GridLayout(1, 2, 9, 0));
+        workloads.setOpaque(false);
+        JPanel members = summaryBox("Open work by assignee");
+        JPanel labels = summaryBox("Open work by label");
+        Map<String, Integer> assigned = new LinkedHashMap<>();
+        Map<String, Integer> labelled = new LinkedHashMap<>();
+        for (Card card : cards) {
+            if (card.complete) continue;
+            if (card.assignees.isEmpty()) assigned.merge("Unassigned", 1, Integer::sum);
+            card.assignees.forEach(name -> assigned.merge(name, 1, Integer::sum));
+            if (card.labels.isEmpty()) labelled.merge("Unlabelled", 1, Integer::sum);
+            card.labels.forEach(name -> labelled.merge(name, 1, Integer::sum));
+        }
+        int open = (int) (cards.size() - done);
+        assigned.forEach((name, count) -> progress(members, name, count, open, ACCENT));
+        labelled.forEach((name, count) -> progress(labels, name, count, open, color(app.board.labels.getOrDefault(name, COLORS.getFirst()))));
+        if (open == 0) {
+            line(members, text("No open work.", 13, false, MUTED));
+            line(labels, text("No open work.", 13, false, MUTED));
+        }
+        workloads.add(members);
+        workloads.add(labels);
+        line(root, workloads);
         gap(root, 15);
         JPanel next = summaryBox("Upcoming deadlines");
         var waiting = cards.stream().filter(card -> !card.complete && card.due != null).sorted(Comparator.comparing(card -> card.due)).limit(8).toList();

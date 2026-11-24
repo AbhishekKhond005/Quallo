@@ -87,6 +87,17 @@ public final class DesktopTest {
         screenshot(robot, captures, "guide", app);
         click(app, "Mark complete");
         check(onEdt(() -> app.state.completedLessons.contains("scope")), "tutorial progress");
+        click(app, "Inbox");
+        onEdt(() -> {
+            JTextField title = find(app, JTextField.class, field -> "Capture title".equals(field.getAccessibleContext().getAccessibleName()));
+            title.setText("Investigate launch stutter");
+            findButton(app, "Capture").doClick();
+            return null;
+        });
+        check(onEdt(() -> app.state.inbox.activeCards().getFirst().title.equals("Investigate launch stutter")), "capture an inbox card");
+        click(app, "Projects");
+        click(app, "Workspace table");
+        check(onEdt(() -> app.section.equals("Workspace table") && app.workspaceTable != null), "open workspace table");
         click(app, "My work");
         check(onEdt(() -> app.section.equals("My work")), "open My work");
     }

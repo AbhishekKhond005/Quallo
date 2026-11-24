@@ -74,6 +74,8 @@ public final class StoreTest {
             Path art = Files.writeString(root.resolve("playtest notes.txt"), "Notes for the QA team");
             second.attachments.add(store.attach(art));
             check(second.attachments.getFirst().equals(store.attach(art)), "attachment deduplication");
+            Card captured = addCard(state.inbox, state.inbox.firstLane(), "Capture playtest notes", state.author);
+            captured.attachments.add(store.attach(art));
             state.completedLessons.add("scope");
             store.save(state);
             store.backup(state, backup);
@@ -91,6 +93,7 @@ public final class StoreTest {
             Attachment file = restored.firstBoard().card(cardId).attachments.getFirst();
             check(Files.readString(store.attachment(file)).equals("Notes for the QA team"), "backup restores copied file");
             check(store.load().firstBoard().card(cardId) != null, "backup remains on disk");
+            check(restored.inbox.activeCards().getFirst().attachments.getFirst().equals(file), "backup includes Inbox");
         }
     }
 

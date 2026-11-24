@@ -17,9 +17,9 @@ Every package includes its Java runtime. The Linux app uses the system's desktop
 
 ## Manage a game project
 
-- Organize work in workspaces, boards, and lists. Drag cards to move or reorder them. Use list settings for WIP limits and completion behavior.
+- Capture unplanned work in Inbox and move it onto a project board when it’s ready. Organize the work in workspaces, boards, and lists. Drag cards to move or reorder them. Use list settings for WIP limits and completion behavior.
 - Track features, bugs, assets, playtests, and milestones. Cards support priorities, dates, estimates, labels, assignees, checklists, custom fields, dependencies, comments, and files.
-- Switch between Board, Table, Calendar, Timeline, and Overview. My work collects your assigned and watched cards across workspaces.
+- Switch between Board, Table, Calendar, Timeline, and Overview. Workspace Table shows work across boards. My work collects your assigned and watched cards and cards with checklist items assigned to you.
 - Archive or restore work, turn boards and cards into reusable templates, and add rules that complete, reopen, or label cards when they enter a list.
 - Export a board as CSV. Export or restore a ZIP workspace backup, including attachments, from Settings.
 

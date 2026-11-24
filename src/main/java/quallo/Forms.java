@@ -55,6 +55,7 @@ final class Forms {
         JComboBox<T> combo = new JComboBox<>(options);
         combo.setSelectedItem(selection);
         combo.setMaximumRowCount(14);
+        styleCombo(combo);
         combo.setRenderer(new DefaultListCellRenderer() {
             @Override public Component getListCellRendererComponent(JList<?> list, Object value, int index,
                     boolean selected, boolean focus) {
