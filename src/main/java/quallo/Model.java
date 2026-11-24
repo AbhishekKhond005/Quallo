@@ -181,26 +181,6 @@ final class Model {
     record Event(String author, String text, Instant date) {}
     record Rule(String laneId, String action, String value) {}
 
-    static Board newBoard(String name, boolean game) {
-        Board board = new Board(name);
-        board.lanes.add(new Lane("Backlog", "#A3A9B8"));
-        board.lanes.add(new Lane("In Progress", "#BBA3FF"));
-        if (game) board.lanes.add(new Lane("Playtest & QA", "#FFB17C"));
-        Lane done = new Lane("Done", "#7DDBC0");
-        done.done = true;
-        board.lanes.add(done);
-        if (game) {
-            board.labels.put("Design", COLORS.get(0));
-            board.labels.put("Engineering", COLORS.get(3));
-            board.labels.put("Art", COLORS.get(4));
-            board.labels.put("Audio", COLORS.get(5));
-            board.labels.put("QA", COLORS.get(2));
-            board.fields.add("Build / version");
-            board.fields.add("Platform");
-        }
-        return board;
-    }
-
     static Card addCard(Board board, Lane lane, String title, String author) {
         Card card = new Card(title);
         lane.cards.add(card);

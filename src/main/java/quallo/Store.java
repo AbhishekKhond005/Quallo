@@ -57,7 +57,7 @@ final class Store implements AutoCloseable {
     }
 
     State load() throws IOException {
-        if (Files.notExists(manifest)) return Demo.create();
+        if (Files.notExists(manifest)) return new State();
         try (InputStream input = Files.newInputStream(manifest)) {
             return WorkspaceXml.read(input);
         }

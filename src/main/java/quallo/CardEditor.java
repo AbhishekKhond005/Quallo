@@ -180,7 +180,7 @@ final class CardEditor extends JDialog {
         }
         gap(checklistBody, 12);
         line(checklistBody, primary("Add checklist", "plus", () -> {
-            String name = Forms.prompt(this, "Add checklist", "Name", "Acceptance criteria");
+            String name = Forms.prompt(this, "Add checklist", "Name", "");
             if (!name.isBlank()) { draft.checklists.add(new Checklist(name)); refreshChecklists(); }
         }));
         refresh(checklistBody);

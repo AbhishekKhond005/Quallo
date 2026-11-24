@@ -19,7 +19,9 @@ final class Forms {
             position.weightx = 0;
             position.fill = GridBagConstraints.NONE;
             position.insets = new Insets(7, 0, 7, 15);
-            form.add(text((String) entries[i], 13, true, MUTED), position);
+            JLabel label = text((String) entries[i], 13, true, MUTED);
+            label.setLabelFor((Component) entries[i + 1]);
+            form.add(label, position);
             position.gridx = 1;
             position.weightx = 1;
             position.fill = GridBagConstraints.HORIZONTAL;

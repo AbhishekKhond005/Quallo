@@ -82,7 +82,7 @@ final class StudioWindow extends JFrame {
             else if (section.equals("Project")) addCard();
             else BoardsUi.createBoard(this, workspaceTable);
         });
-        shortcut(KeyEvent.VK_F1, "guide", () -> openSection("Guide"));
+        shortcut(KeyEvent.VK_F1, "guide", () -> openSection("Tutorial"));
         shortcut(KeyEvent.VK_B, "board", () -> openSection("Project"));
         save();
         render();
@@ -171,7 +171,7 @@ final class StudioWindow extends JFrame {
         Point position = currentScroll == null ? new Point() : currentScroll.getViewport().getViewPosition();
         currentScroll = null;
         page.removeAll();
-        if (section.equals("Guide")) {
+        if (section.equals("Tutorial")) {
             page.add(Tutorial.build(this), BorderLayout.CENTER);
         } else if (section.equals("Projects")) {
             page.add(BoardsUi.projects(this), BorderLayout.CENTER);
@@ -218,15 +218,20 @@ final class StudioWindow extends JFrame {
         pad(brand, 20, 19, 16, 19);
         brand.add(glyph("logo", ACCENT, 34), BorderLayout.WEST);
         brand.add(text("Quallo", 25, true, TEXT), BorderLayout.CENTER);
-        navigation.add(brand, BorderLayout.NORTH);
+        JPanel fixed = panel(new BorderLayout(), SIDE);
+        fixed.add(brand, BorderLayout.NORTH);
+        JPanel sections = stack();
+        pad(sections, 5, 14, 12, 14);
+        nav(sections, "Projects", "grid", section.equals("Projects") || board == null && section.equals("Project"),
+            () -> openSection("Projects"), ACCENT);
+        nav(sections, "Inbox", "archive", section.equals("Inbox"), () -> openSection("Inbox"), ORANGE);
+        nav(sections, "My work", "checks", section.equals("My work"), () -> openSection("My work"), GREEN);
+        nav(sections, "Tutorial", "book", section.equals("Tutorial"), () -> openSection("Tutorial"), ORANGE);
+        fixed.add(sections, BorderLayout.CENTER);
+        navigation.add(fixed, BorderLayout.NORTH);
 
         JPanel links = stack();
-        pad(links, 5, 14, 12, 14);
-        nav(links, "Projects", "grid", section.equals("Projects"), () -> openSection("Projects"), ACCENT);
-        nav(links, "Inbox", "archive", section.equals("Inbox"), () -> openSection("Inbox"), ORANGE);
-        nav(links, "My work", "checks", section.equals("My work"), () -> openSection("My work"), GREEN);
-        nav(links, "Project guide", "book", section.equals("Guide"), () -> openSection("Guide"), ORANGE);
-        gap(links, 24);
+        pad(links, 12, 14, 12, 14);
         sectionLabel(links, "WORKSPACES", () -> BoardsUi.newWorkspace(this));
         for (Workspace space : state.workspaces) {
             gap(links, 13);
@@ -334,7 +339,7 @@ final class StudioWindow extends JFrame {
             trail.add(glyph("right", QUIET, 11));
             trail.add(text(board.name, 13, true, TEXT));
         } else {
-            trail.add(text(section.equals("Guide") ? "Project guide" : section.equals("Project") ? "Projects" : section, 14, true, TEXT));
+            trail.add(text(section.equals("Project") ? "Projects" : section, 14, true, TEXT));
         }
         JPanel holder = new JPanel(new GridBagLayout());
         holder.setOpaque(false);

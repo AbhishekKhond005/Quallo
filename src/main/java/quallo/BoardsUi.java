@@ -68,7 +68,14 @@ final class BoardsUi {
         }
         if (app.state.workspaces.isEmpty()) {
             gap(content, 16);
-            line(content, primary("Create a workspace", "plus", () -> newWorkspace(app)));
+            JPanel empty = new Surface(new BorderLayout(0, 14), SURFACE, LINE, 18);
+            pad(empty, 19, 19, 19, 19);
+            empty.add(Views.title("Start your first project", "Name a workspace and create a board for your game."), BorderLayout.CENTER);
+            JPanel actions = row(8);
+            actions.add(primary("Create a workspace", "plus", () -> newWorkspace(app)));
+            actions.add(button("Open tutorial", "book", () -> app.openSection("Tutorial")));
+            empty.add(actions, BorderLayout.SOUTH);
+            line(content, empty);
         }
         return scroll(content);
     }
@@ -98,25 +105,27 @@ final class BoardsUi {
     static void createBoard(StudioWindow app, Workspace preselected) {
         JTextField name = field("", 23);
         JTextArea description = area("", 3, 25);
-        JComboBox<String> starter = Forms.combo(new String[]{"Game production", "Simple Kanban", "Empty board"}, "Game production");
+        JTextField workspaceName = field("", 23);
         JComboBox<Choice<Workspace>> spaces = choices(app.state.workspaces, space -> space.name, preselected);
         JPanel form = app.state.workspaces.isEmpty()
-            ? Forms.form("Board name", name, "Description", scroll(description), "Starter layout", starter)
-            : Forms.form("Board name", name, "Description", scroll(description), "Workspace", spaces, "Starter layout", starter);
+            ? Forms.form("Workspace name", workspaceName, "Board name", name, "Description", scroll(description))
+            : Forms.form("Workspace", spaces, "Board name", name, "Description", scroll(description));
         while (Forms.accept(app, "New project board", form)) {
             if (name.getText().isBlank()) {
                 app.showError(new IllegalArgumentException("Enter a board name."));
                 continue;
             }
             Workspace space = choice(spaces);
-            if (space == null) { space = new Workspace("My Studio"); app.state.workspaces.add(space); }
-            Board board = switch (Forms.value(starter)) {
-                case "Empty board" -> new Board(name.getText().strip());
-                case "Simple Kanban" -> newBoard(name.getText().strip(), false);
-                default -> newBoard(name.getText().strip(), true);
-            };
+            if (space == null) {
+                if (workspaceName.getText().isBlank()) {
+                    app.showError(new IllegalArgumentException("Enter a workspace name."));
+                    continue;
+                }
+                space = new Workspace(workspaceName.getText().strip());
+                app.state.workspaces.add(space);
+            }
+            Board board = new Board(name.getText().strip());
             board.description = description.getText().strip();
-            board.people.add(app.state.author);
             space.boards.add(board);
             app.chooseBoard(board);
             return;
@@ -154,14 +163,11 @@ final class BoardsUi {
         JTextField name = field(board.name, 25);
         JTextArea description = area(board.description, 4, 32);
         JComboBox<String> accent = colorChoices(board.color);
-        JComboBox<String> art = Forms.combo(new String[]{"Color", "Nightfall illustration"},
-            board.cover.equals(SAMPLE_COVER) ? "Nightfall illustration" : "Color");
-        JPanel form = Forms.form("Name", name, "Description", scroll(description), "Accent", accent, "Cover", art);
+        JPanel form = Forms.form("Name", name, "Description", scroll(description), "Accent", accent);
         if (Forms.accept(app, "Board details", form) && !name.getText().isBlank()) {
             board.name = name.getText().strip();
             board.description = description.getText().strip();
             board.color = Forms.value(accent);
-            board.cover = "Nightfall illustration".equals(Forms.value(art)) ? SAMPLE_COVER : "";
             app.changed();
         }
     }

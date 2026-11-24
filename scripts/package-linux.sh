@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-version=${1:-1.0.2}
+version=${1:-1.1.0}
 ./scripts/build.sh
 mkdir -p dist
 rm -rf build/app-image

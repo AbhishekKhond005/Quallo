@@ -1,6 +1,6 @@
 # Quallo
 
-Quallo is an offline desktop planner for game development. Project Nightfall, a sample vertical-slice board, opens on first launch. Select **Project guide** in the sidebar for six hands-on lessons that take you from scoping a build through playtest and handoff.
+Quallo is an offline desktop planner for game development. It starts with an empty Projects screen. Select **Tutorial** in the sidebar, choose **Open tutorial** on that screen, or press **F1** for six hands-on lessons that take you from setting up your own project through playtest and handoff.
 
 ## Install
 
@@ -9,7 +9,7 @@ Download the package for your system from [GitHub Releases](https://github.com/A
 | Platform | Package |
 | --- | --- |
 | Windows x64 | Run the MSI and open Quallo from Start. The ZIP contains a portable copy with `Quallo.exe`. |
-| Debian or Ubuntu x64 | Install the DEB with `sudo apt install ./quallo_1.0.2_amd64.deb`, then launch Quallo from the application menu. |
+| Debian or Ubuntu x64 | Install the DEB with `sudo apt install ./quallo_1.1.0_amd64.deb`, then launch Quallo from the application menu. |
 | RPM-based Linux x64 | Install the RPM with your distro’s package manager. |
 | Other Linux x64 distributions | Extract the Linux tarball and launch `Quallo/bin/Quallo` from the extracted folder. |
 
@@ -39,7 +39,3 @@ xvfb-run -a -s "-screen 0 1600x1024x24" ./scripts/test.sh --desktop
 ```
 
 On Windows, run `./scripts/build.ps1` from PowerShell. The packaging scripts are `scripts/package-linux.sh` and `scripts/package-windows.ps1`. Linux package builds use fakeroot and optionally rpm-build. Windows package builds use WiX 3. The GitHub desktop workflow builds and smoke-tests the native packages on both platforms before publishing a tagged release.
-
-## Artwork
-
-The built-in ImageGen tool created the sample [Nightfall cover](src/main/resources/quallo/nightfall.jpg). The prompt requested a cinematic 3:1 concept painting of a dark alien alpine valley, with a tiny orbital station and a pale lavender eclipse toward the right. It specified a quiet left side for the project title, a near-black and plum palette, and original indie game concept art with no lettering.

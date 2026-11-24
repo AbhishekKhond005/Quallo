@@ -26,8 +26,21 @@ public final class StoreTest {
         String cardId;
         try (Store store = new Store(root.resolve("original"))) {
             State state = store.load();
-            Board board = state.firstBoard();
-            check(board.activeCards().size() == 11, "sample board");
+            check(state.workspaces.isEmpty() && state.selectedBoard.isEmpty() && state.firstBoard() == null,
+                "first launch has no sample workspace, board or selection");
+            check(state.inbox.activeCards().isEmpty() && state.completedLessons.isEmpty(), "first launch has no tasks or tutorial progress");
+            Workspace workspace = new Workspace("Test studio");
+            state.workspaces.add(workspace);
+            Board board = new Board("Test game");
+            workspace.boards.add(board);
+            state.selectedBoard = board.id;
+            board.lanes.add(new Lane("Draft", COLORS.getFirst()));
+            Lane shipped = new Lane("Shipped", COLORS.get(2));
+            shipped.done = true;
+            board.lanes.add(shipped);
+            board.labels.put("QA", COLORS.get(2));
+            board.people.add("Me");
+            board.fields.add("Build / version");
             check(state.board(state.selectedBoard) == board, "selected board");
             try (Store duplicate = new Store(store.directory)) {
                 throw new AssertionError("Expected single-writer locking for " + duplicate.directory);
