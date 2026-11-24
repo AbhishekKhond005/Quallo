@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Quallo
+Comment=Offline game production planner
+Exec=/opt/quallo/bin/Quallo
+Icon=/opt/quallo/lib/Quallo.png
+Terminal=false
+Categories=Office;ProjectManagement;
