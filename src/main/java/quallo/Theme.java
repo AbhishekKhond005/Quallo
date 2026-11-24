@@ -75,13 +75,7 @@ final class Theme {
     }
 
     static JPanel row(int gap) {
-        JPanel pane = new JPanel(new FlowLayout(FlowLayout.LEFT, gap, 0)) {
-            @Override public Dimension getPreferredSize() {
-                Dimension size = super.getPreferredSize();
-                size.width = Math.max(0, size.width - gap * 2);
-                return size;
-            }
-        };
+        JPanel pane = new JPanel(new FlowLayout(FlowLayout.LEFT, gap, 0));
         pane.setOpaque(false);
         pane.setBorder(new EmptyBorder(0, -gap, 0, -gap));
         return pane;

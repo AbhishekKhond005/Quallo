@@ -25,6 +25,9 @@ final class WorkspaceXml {
             xml.writeStartDocument("UTF-8", "1.0");
             element(xml, "quallo", "version", 1, "author", state.author, "selected", state.selectedBoard);
             for (String id : state.completedLessons) entry(xml, "lesson", "id", id);
+            element(xml, "inbox");
+            writeBoard(xml, state.inbox);
+            xml.writeEndElement();
             for (Workspace space : state.workspaces) {
                 element(xml, "workspace", "id", space.id, "name", space.name);
                 for (Board board : space.boards) writeBoard(xml, board);
@@ -131,6 +134,8 @@ final class WorkspaceXml {
             State state = new State();
             state.author = value(root, "author", "Me");
             state.selectedBoard = root.getAttribute("selected");
+            children(root, "inbox").stream().flatMap(inbox -> children(inbox, "board").stream()).findFirst()
+                .map(WorkspaceXml::readBoard).filter(board -> board.firstLane() != null).ifPresent(board -> state.inbox = board);
             for (Element lesson : children(root, "lesson")) state.completedLessons.add(lesson.getAttribute("id"));
             for (Element element : children(root, "workspace")) {
                 Workspace space = new Workspace(element.getAttribute("name"));

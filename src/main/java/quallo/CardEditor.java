@@ -327,8 +327,8 @@ final class CardEditor extends JDialog {
             if (!card.archived && home.archived) home.archived = false;
         }));
         Theme.action(menu, "Duplicate card", () -> commit(card -> duplicate(card, false)));
-        Theme.action(menu, "Save a copy as template", () -> commit(card -> duplicate(card, true)));
-        Theme.action(menu, "Move to another board", this::moveAcrossBoards);
+        if (board != app.state.inbox) Theme.action(menu, "Save a copy as template", () -> commit(card -> duplicate(card, true)));
+        Theme.action(menu, board == app.state.inbox ? "Move to a project board" : "Move to another board", this::moveAcrossBoards);
     }
 
     private void duplicate(Card card, boolean template) {
@@ -342,11 +342,27 @@ final class CardEditor extends JDialog {
         lane.cards.add(copy);
     }
 
+    static void moveFromInbox(StudioWindow app, Card card) {
+        Board original = app.state.inbox;
+        chooseMove(app, app, original, target -> {
+            moveCard(original, target.board, card, target.lane, null, app.state.author);
+            app.changed();
+        });
+    }
+
     private void moveAcrossBoards() {
+        chooseMove(app, this, board, target -> commit(card ->
+            moveCard(board, target.board, card, target.lane, null, app.state.author)));
+    }
+
+    private record Destination(Board board, Lane lane) {}
+
+    private static void chooseMove(StudioWindow app, Component owner, Board board,
+                                   java.util.function.Consumer<Destination> move) {
         List<Board> boards = app.state.workspaces.stream().flatMap(space -> space.boards.stream())
             .filter(value -> value != board && !value.template && !value.archived && value.firstLane() != null).toList();
         if (boards.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Create another board with an active list first.");
+            JOptionPane.showMessageDialog(owner, "Create a project board with an active list first.");
             return;
         }
         JComboBox<Choice<Board>> projects = choices(boards, value -> app.state.workspace(value).name + " / " + value.name, boards.getFirst());
@@ -358,8 +374,8 @@ final class CardEditor extends JDialog {
         };
         projects.addActionListener(event -> fill.run());
         fill.run();
-        if (Forms.accept(this, "Move card to another board", Forms.form("Board", projects, "List", lists))) {
-            commit(card -> moveCard(board, choice(projects), card, choice(lists), null, app.state.author));
+        if (Forms.accept(owner, "Move card to a project board", Forms.form("Board", projects, "List", lists))) {
+            move.accept(new Destination(choice(projects), choice(lists)));
         }
     }
 

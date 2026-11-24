@@ -1,0 +1,136 @@
+name: Desktop packages
+
+on:
+  pull_request:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Install desktop and packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fakeroot rpm xauth xvfb
+      - name: Test offline workflows
+        run: xvfb-run -a -s "-screen 0 1600x1024x24" ./scripts/test.sh --desktop
+      - name: Build Linux packages
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          [[ "$GITHUB_REF_TYPE" == "tag" ]] || version=1.0.0
+          ./scripts/package-linux.sh "$version"
+      - name: Install DEB and verify the native launcher
+        run: |
+          sudo apt-get install -y ./dist/*.deb
+          xvfb-run -a bash -e -c '
+            data="$(mktemp -d)"
+            /opt/quallo/bin/Quallo --data-dir "$data" &
+            app_pid=$!
+            trap "kill $app_pid 2>/dev/null || true" EXIT
+            for attempt in {1..40}; do
+              if [[ -s "$data/workspace.xml" ]]; then
+                grep -q "Project Nightfall" "$data/workspace.xml"
+                exit 0
+              fi
+              kill -0 "$app_pid"
+              sleep .25
+            done
+            echo "Quallo did not start from the installed DEB." >&2
+            exit 1
+          '
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: dist/*
+          if-no-files-found: error
+
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Build Windows packages
+        shell: pwsh
+        run: |
+          $version = if ($env:GITHUB_REF_TYPE -eq "tag") { $env:GITHUB_REF_NAME.Substring(1) } else { "1.0.0" }
+          ./scripts/package-windows.ps1 -Version $version
+      - name: Install MSI and verify the native launcher
+        shell: pwsh
+        run: |
+          $msi = (Get-ChildItem dist -Filter *.msi | Select-Object -First 1).FullName
+          $installRoot = Join-Path $env:RUNNER_TEMP "quallo-installed"
+          $installLog = Join-Path $env:RUNNER_TEMP "quallo-msi.log"
+          $result = Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /qn /norestart /l*v `"$installLog`" INSTALLDIR=`"$installRoot`"" -PassThru -Wait
+          if ($result.ExitCode -ne 0) {
+            Get-Content $installLog -Tail 80
+            throw "Quallo MSI exited with code $($result.ExitCode)."
+          }
+          $candidatePaths = @(
+            (Join-Path $installRoot "Quallo.exe"),
+            (Join-Path $env:LOCALAPPDATA "Quallo/Quallo.exe"),
+            (Join-Path $env:LOCALAPPDATA "Programs/Quallo/Quallo.exe"),
+            (Join-Path $env:ProgramFiles "Quallo/Quallo.exe")
+          )
+          $launcher = $candidatePaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (!$launcher) {
+            Get-Content $installLog | Select-String "INSTALLDIR|APPLICATIONFOLDER"
+            throw "Installed Quallo.exe was not located."
+          }
+          $data = Join-Path $env:RUNNER_TEMP "quallo-native-smoke"
+          $manifest = Join-Path $data "workspace.xml"
+          $app = Start-Process $launcher -ArgumentList "--data-dir `"$data`"" -PassThru
+          try {
+            for ($attempt = 0; $attempt -lt 60 -and !(Test-Path $manifest); $attempt++) {
+              if ($app.HasExited) { throw "Quallo exited before opening the workspace." }
+              Start-Sleep -Milliseconds 250
+            }
+            if (!(Test-Path $manifest) -or !(Select-String -Path $manifest -SimpleMatch "Project Nightfall" -Quiet)) {
+              throw "Quallo did not create its sample workspace."
+            }
+          } finally {
+            if (!$app.HasExited) {
+              if ($app.CloseMainWindow()) { $app.WaitForExit(3000) | Out-Null }
+              if (!$app.HasExited) { $app.Kill() }
+            }
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-packages
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, windows]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+      - name: Publish installers and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          (cd release && sha256sum * > SHA256SUMS.txt)
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" release/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" release/* --verify-tag --title "Quallo $GITHUB_REF_NAME" --generate-notes
+          fi

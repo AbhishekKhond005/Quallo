@@ -33,7 +33,13 @@ final class BoardsUi {
             JPanel label = new JPanel(new BorderLayout());
             label.setOpaque(false);
             label.add(text(space.name, 18, true, TEXT), BorderLayout.WEST);
-            label.add(button("New board", "plus", () -> createBoard(app, space)), BorderLayout.EAST);
+            JPanel workspaceActions = row(6);
+            workspaceActions.add(button("Workspace table", "table", () -> {
+                app.workspaceTable = space;
+                app.openSection("Workspace table");
+            }));
+            workspaceActions.add(button("New board", "plus", () -> createBoard(app, space)));
+            label.add(workspaceActions, BorderLayout.EAST);
             line(content, label);
             gap(content, 8);
             JPanel boards = stack();
@@ -417,7 +423,7 @@ final class BoardsUi {
         archive(app, "Archived boards", entries);
     }
 
-    private static void boardArchive(StudioWindow app, Board board) {
+    static void boardArchive(StudioWindow app, Board board) {
         List<Archived> entries = new ArrayList<>();
         for (Lane lane : board.lanes) {
             if (lane.archived) entries.add(new Archived("List / " + lane.name, () -> lane.archived = false,

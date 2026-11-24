@@ -4,9 +4,10 @@ import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Locale;
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -21,6 +22,7 @@ final class StudioWindow extends JFrame {
     final Store store;
     State state;
     Board board;
+    Workspace workspaceTable;
     final JPanel navigation = panel(new BorderLayout(), SIDE);
     final JPanel body = panel(new BorderLayout(), BASE);
     final JPanel page = panel(new BorderLayout(), BASE);
@@ -28,6 +30,7 @@ final class StudioWindow extends JFrame {
     final SearchField search = new SearchField();
     final Timer searchDelay;
     final WorkFilters filters = new WorkFilters();
+    final Map<Lane, Integer> visibleLimits = new LinkedHashMap<>();
     String view = "Board";
     String section = "Project";
     java.time.YearMonth month = java.time.YearMonth.now();
@@ -52,8 +55,8 @@ final class StudioWindow extends JFrame {
         navigation.setPreferredSize(new Dimension(228, 0));
         navigation.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, LINE));
         searchDelay = new Timer(120, event -> {
-            if (section.equals("Guide") || section.equals("Projects")) section = "Project";
-            render();
+            visibleLimits.clear();
+            renderPage();
         });
         searchDelay.setRepeats(false);
         search.getDocument().addDocumentListener(new DocumentListener() {
@@ -69,8 +72,16 @@ final class StudioWindow extends JFrame {
                 dispose();
             }
         });
-        shortcut(KeyEvent.VK_K, "search", () -> { search.requestFocusInWindow(); search.selectAll(); });
-        shortcut(KeyEvent.VK_N, "card", this::addCard);
+        shortcut(KeyEvent.VK_K, "search", () -> {
+            if (!hasSearch() && board != null) openSection("Project");
+            search.requestFocusInWindow();
+            search.selectAll();
+        });
+        shortcut(KeyEvent.VK_N, "card", () -> {
+            if (section.equals("Inbox")) openSection("Inbox");
+            else if (section.equals("Project")) addCard();
+            else BoardsUi.createBoard(this, workspaceTable);
+        });
         shortcut(KeyEvent.VK_F1, "guide", () -> openSection("Guide"));
         shortcut(KeyEvent.VK_B, "board", () -> openSection("Project"));
         save();
@@ -115,6 +126,7 @@ final class StudioWindow extends JFrame {
         board = selected;
         state.selectedBoard = selected.id;
         filters.clear();
+        visibleLimits.clear();
         search.setText("");
         searchDelay.stop();
         section = "Project";
@@ -125,7 +137,9 @@ final class StudioWindow extends JFrame {
 
     void openSection(String name) {
         section = name;
+        if (!name.equals("Workspace table")) workspaceTable = null;
         filters.clear();
+        visibleLimits.clear();
         search.setText("");
         searchDelay.stop();
         currentScroll = null;
@@ -141,19 +155,31 @@ final class StudioWindow extends JFrame {
     }
 
     void render() {
-        Point position = currentScroll == null ? new Point() : currentScroll.getViewport().getViewPosition();
-        currentScroll = null;
         renderNavigation();
         body.removeAll();
         body.add(topbar(), BorderLayout.NORTH);
-        page.removeAll();
         body.add(page, BorderLayout.CENTER);
+        renderPage();
+        navigation.revalidate();
+        navigation.repaint();
+        body.revalidate();
+        body.repaint();
+    }
+
+    void renderPage() {
+        Point position = currentScroll == null ? new Point() : currentScroll.getViewport().getViewPosition();
+        currentScroll = null;
+        page.removeAll();
         if (section.equals("Guide")) {
             page.add(Tutorial.build(this), BorderLayout.CENTER);
         } else if (section.equals("Projects")) {
             page.add(BoardsUi.projects(this), BorderLayout.CENTER);
         } else if (section.equals("My work")) {
             page.add(Views.myWork(this), BorderLayout.CENTER);
+        } else if (section.equals("Inbox")) {
+            page.add(Inbox.build(this), BorderLayout.CENTER);
+        } else if (section.equals("Workspace table")) {
+            page.add(Views.workspace(this, workspaceTable), BorderLayout.CENTER);
         } else if (board == null) {
             page.add(BoardsUi.projects(this), BorderLayout.CENTER);
         } else {
@@ -174,10 +200,8 @@ final class StudioWindow extends JFrame {
             inner.add(content, BorderLayout.CENTER);
             page.add(inner, BorderLayout.CENTER);
         }
-        navigation.revalidate();
-        navigation.repaint();
-        body.revalidate();
-        body.repaint();
+        page.revalidate();
+        page.repaint();
         JScrollPane rendered = currentScroll;
         if (rendered != null) SwingUtilities.invokeLater(() -> {
             Dimension extent = rendered.getViewport().getExtentSize();
@@ -198,6 +222,7 @@ final class StudioWindow extends JFrame {
         JPanel links = stack();
         pad(links, 5, 14, 12, 14);
         nav(links, "Projects", "grid", section.equals("Projects"), () -> openSection("Projects"), ACCENT);
+        nav(links, "Inbox", "archive", section.equals("Inbox"), () -> openSection("Inbox"), ORANGE);
         nav(links, "My work", "checks", section.equals("My work"), () -> openSection("My work"), GREEN);
         nav(links, "Project guide", "book", section.equals("Guide"), () -> openSection("Guide"), ORANGE);
         gap(links, 24);
@@ -286,14 +311,21 @@ final class StudioWindow extends JFrame {
         holder.add(trail);
         top.add(holder, BorderLayout.WEST);
         JPanel actions = row(10);
-        if (section.equals("Project") || section.equals("My work")) actions.add(search);
-        actions.add(primary(board != null && section.equals("Project") ? "New card" : "New board", "plus",
-            board != null && section.equals("Project") ? this::addCard : () -> BoardsUi.createBoard(this, null)));
+        if (hasSearch()) actions.add(search);
+        if (!section.equals("Inbox")) {
+            boolean project = board != null && section.equals("Project");
+            actions.add(primary(project ? "New card" : "New board", "plus",
+                project ? this::addCard : () -> BoardsUi.createBoard(this, workspaceTable)));
+        }
         JPanel end = new JPanel(new GridBagLayout());
         end.setOpaque(false);
         end.add(actions);
         top.add(end, BorderLayout.EAST);
         return top;
+    }
+
+    private boolean hasSearch() {
+        return section.equals("Project") && board != null || section.equals("My work") || section.equals("Workspace table");
     }
 
     private JPanel hero() {
@@ -309,7 +341,7 @@ final class StudioWindow extends JFrame {
                 if (image != null) {
                     double scale = Math.max(w / (double) image.getWidth(), h / (double) image.getHeight());
                     int iw = (int) Math.ceil(image.getWidth() * scale), ih = (int) Math.ceil(image.getHeight() * scale);
-                    g.drawImage(image, (w - iw) / 2, (int) ((h - ih) * .29), iw, ih, null);
+                    g.drawImage(image, (w - iw) / 2, (int) ((h - ih) * .085), iw, ih, null);
                 } else {
                     g.setColor(new Color(tint.getRed(), tint.getGreen(), tint.getBlue(), 33));
                     for (int i = 0; i < 7; i++) {
@@ -387,7 +419,8 @@ final class StudioWindow extends JFrame {
 
     List<Card> matchingCards() {
         String query = search.getText().trim().toLowerCase(Locale.ROOT);
-        return board.activeCards().stream().filter(card -> filters.matches(board, card, query)).toList();
+        return board.lanes.stream().filter(lane -> !lane.archived).flatMap(lane -> lane.cards.stream()
+            .filter(card -> !card.archived && !card.template && filters.matches(board, lane, card, query))).toList();
     }
 
     void addCard() {

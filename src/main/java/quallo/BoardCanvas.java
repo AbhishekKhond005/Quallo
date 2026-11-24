@@ -16,6 +16,7 @@ import static quallo.Theme.*;
 final class BoardCanvas extends JPanel {
     private static final int LANE_WIDTH = 219;
     private static final int LANE_GAP = 12;
+    private static final int PAGE_SIZE = 40;
     private static final DateTimeFormatter CARD_DATE = DateTimeFormatter.ofPattern("MMM d");
     private static final DataFlavor CARD_FLAVOR = new DataFlavor(Card.class, "Quallo card");
     private final StudioWindow app;
@@ -68,14 +69,19 @@ final class BoardCanvas extends JPanel {
         column.add(heading, BorderLayout.NORTH);
 
         JPanel cards = stack();
-        boolean any = false;
-        for (Card card : lane.cards) {
-            if (!visible.contains(card)) continue;
+        int limit = app.visibleLimits.getOrDefault(lane, PAGE_SIZE);
+        var matching = lane.cards.stream().filter(visible::contains).toList();
+        for (Card card : matching.stream().limit(limit).toList()) {
             line(cards, new Tile(lane, card));
             gap(cards, 8);
-            any = true;
         }
-        if (!any) {
+        if (matching.size() > limit) {
+            line(cards, button("Show " + Math.min(PAGE_SIZE, matching.size() - limit) + " more", "down", () -> {
+                app.visibleLimits.put(lane, limit + PAGE_SIZE);
+                app.renderPage();
+            }).ghost().left());
+        }
+        if (matching.isEmpty()) {
             JLabel placeholder = text("No cards", 12, false, QUIET);
             pad(placeholder, 13, 10, 14, 0);
             line(cards, placeholder);

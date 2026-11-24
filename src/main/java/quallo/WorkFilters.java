@@ -17,11 +17,13 @@ final class WorkFilters {
         label = assignee = priority = type = status = milestone = "";
     }
 
-    boolean matches(Board board, Card card, String query) {
-        String text = String.join(" ", card.title, card.description, card.type, card.priority, card.milestone,
-            board.laneOf(card).name, String.join(" ", card.labels), String.join(" ", card.assignees),
-            String.join(" ", card.fields.values())).toLowerCase(Locale.ROOT);
-        if (!query.isEmpty() && !text.contains(query)) return false;
+    boolean matches(Board board, Lane lane, Card card, String query) {
+        if (!query.isEmpty()) {
+            String text = String.join(" ", card.title, card.description, card.type, card.priority, card.milestone,
+                lane.name, String.join(" ", card.labels), String.join(" ", card.assignees),
+                String.join(" ", card.fields.values())).toLowerCase(Locale.ROOT);
+            if (!text.contains(query)) return false;
+        }
         if (!label.isEmpty() && !card.labels.contains(label)) return false;
         if (!assignee.isEmpty() && !card.assignees.contains(assignee)) return false;
         if (!priority.isEmpty() && !priority.equals(card.priority)) return false;
@@ -61,6 +63,7 @@ final class WorkFilters {
             status = Forms.value(statuses);
             milestone = Forms.value(milestones);
         } else return;
+        app.visibleLimits.clear();
         app.currentScroll = null;
         app.render();
     }

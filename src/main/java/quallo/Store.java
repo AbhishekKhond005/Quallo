@@ -167,8 +167,10 @@ final class Store implements AutoCloseable {
 
     private static Map<String, Attachment> files(State state) {
         Map<String, Attachment> files = new LinkedHashMap<>();
-        state.workspaces.forEach(space -> space.boards.forEach(board -> board.lanes.forEach(lane ->
-            lane.cards.forEach(card -> card.attachments.forEach(file -> files.putIfAbsent(file.key(), file))))));
+        java.util.stream.Stream.concat(java.util.stream.Stream.of(state.inbox),
+            state.workspaces.stream().flatMap(space -> space.boards.stream())).forEach(board ->
+                board.lanes.forEach(lane -> lane.cards.forEach(card ->
+                    card.attachments.forEach(file -> files.putIfAbsent(file.key(), file)))));
         return files;
     }
 

@@ -2,7 +2,6 @@ package quallo;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.*;
@@ -54,10 +53,27 @@ final class Views {
         return page;
     }
 
-    private record Work(Board board, Card card) {}
+    private record Work(Board board, Lane lane, Card card) {}
+
+    static JComponent workspace(StudioWindow app, Workspace space) {
+        String query = app.search.getText().strip().toLowerCase(Locale.ROOT);
+        List<Work> cards = workspaceWork(space).stream()
+            .filter(item -> app.filters.matches(item.board, item.lane, item.card, query)).toList();
+        JPanel content = panel(new BorderLayout(0, 15), BASE);
+        pad(content, 25, 28, 25, 28);
+        content.add(title(space.name, "Tasks across active project boards in this workspace."), BorderLayout.NORTH);
+        content.add(tableFor(app, cards, true), BorderLayout.CENTER);
+        return content;
+    }
+
+    private static List<Work> workspaceWork(Workspace space) {
+        return space.boards.stream().filter(item -> !item.archived && !item.template)
+            .flatMap(board -> board.lanes.stream().filter(lane -> !lane.archived).flatMap(lane -> lane.cards.stream()
+                .filter(card -> !card.archived && !card.template).map(card -> new Work(board, lane, card)))).toList();
+    }
 
     static JComponent table(StudioWindow app) {
-        return tableFor(app, app.matchingCards().stream().map(card -> new Work(app.board, card)).toList(), false);
+        return tableFor(app, app.matchingCards().stream().map(card -> new Work(app.board, app.board.laneOf(card), card)).toList(), false);
     }
 
     private static JComponent tableFor(StudioWindow app, List<Work> cards, boolean showBoard) {
@@ -72,7 +88,7 @@ final class Views {
                 Card card = item.card;
                 return switch (col) {
                     case 0 -> card.title;
-                    case 1 -> (showBoard ? item.board.name + " / " : "") + item.board.laneOf(card).name;
+                    case 1 -> (showBoard ? item.board.name + " / " : "") + item.lane.name;
                     case 2 -> card.type;
                     case 3 -> card.priority;
                     case 4 -> String.join(", ", card.assignees);
@@ -126,7 +142,7 @@ final class Views {
 
     static JComponent myWork(StudioWindow app) {
         String query = app.search.getText().strip().toLowerCase(Locale.ROOT);
-        List<Work> list = personalWork(app).stream().filter(item -> app.filters.matches(item.board, item.card, query)).sorted(BY_DUE).toList();
+        List<Work> list = personalWork(app).stream().filter(item -> app.filters.matches(item.board, item.lane, item.card, query)).sorted(BY_DUE).toList();
         long overdue = list.stream().filter(item -> item.card.overdue(LocalDate.now())).count();
         long upcoming = list.stream().filter(item -> !item.card.complete && item.card.due != null && !item.card.due.isBefore(LocalDate.now())
             && !item.card.due.isAfter(LocalDate.now().plusDays(7))).count();
@@ -146,10 +162,11 @@ final class Views {
     }
 
     private static List<Work> personalWork(StudioWindow app) {
-        return app.state.workspaces.stream().flatMap(space -> space.boards.stream())
-            .filter(board -> !board.archived && !board.template)
-            .flatMap(board -> board.activeCards().stream().filter(card -> card.watching || card.assignees.contains(app.state.author))
-                .map(card -> new Work(board, card))).toList();
+        return app.state.workspaces.stream().flatMap(space -> workspaceWork(space).stream())
+            .filter(item -> item.card.watching || item.card.assignees.contains(app.state.author)
+                || item.card.checklists.stream().flatMap(list -> list.items.stream())
+                    .anyMatch(task -> !task.done && task.owner.equals(app.state.author)))
+            .toList();
     }
 
     static JComponent calendar(StudioWindow app) {
@@ -372,28 +389,12 @@ final class Views {
     }
 
     private static JPanel summaryBox(String heading) {
-        JPanel tile = new Surface(new BorderLayout(), SURFACE, LINE, 13);
+        JPanel tile = new Surface(null, SURFACE, LINE, 13);
+        tile.setLayout(new BoxLayout(tile, BoxLayout.Y_AXIS));
         pad(tile, 13, 14, 14, 14);
-        JPanel layout = stack();
-        line(layout, text(heading, 17, true, TEXT));
-        gap(layout, 8);
-        tile.add(layout, BorderLayout.NORTH);
-        // Populate the same vertical panel while keeping the visible surface as its parent.
-        return new SummaryPanel(tile, layout);
-    }
-
-    private static final class SummaryPanel extends JPanel {
-        private JPanel target;
-        SummaryPanel(JPanel tile, JPanel target) {
-            super(new BorderLayout());
-            setOpaque(false);
-            add(tile);
-            this.target = target;
-        }
-        @Override protected void addImpl(Component component, Object constraints, int index) {
-            if (target == null) super.addImpl(component, constraints, index);
-            else target.add(component, constraints, index);
-        }
+        line(tile, text(heading, 17, true, TEXT));
+        gap(tile, 8);
+        return tile;
     }
 
     private static JPanel stat(String name, long value, Color tint) {

@@ -24,7 +24,12 @@ final class Model {
         String author = "Me";
         String selectedBoard = "";
         final List<Workspace> workspaces = new ArrayList<>();
+        Board inbox = new Board("Inbox");
         final Set<String> completedLessons = new LinkedHashSet<>();
+
+        State() {
+            inbox.lanes.add(new Lane("Captured", COLORS.getFirst()));
+        }
 
         Board board(String id) {
             return workspaces.stream().flatMap(space -> space.boards.stream())
